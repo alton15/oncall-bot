@@ -1,0 +1,37 @@
+services:
+  oncall-bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # ── 필수 ──
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET}
+
+      # ── Git (프라이빗 레포 인증) ──
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GIT_REPO_URL=${GIT_REPO_URL}
+      - GIT_DEFAULT_REF=${GIT_DEFAULT_REF:-develop}
+
+      # ── Atlassian MCP 서버 경로 (컨테이너 내부) ──
+      - ATLASSIAN_AGENT_DIR=/opt/atlassian-mcp-server
+
+      # ── 선택 ──
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      - MAX_CONCURRENT_REQUESTS=${MAX_CONCURRENT_REQUESTS:-3}
+    volumes:
+      # Claude Code CLI 인증 정보 (EC2에서 claude login 후 마운트)
+      # CLI가 세션/캐시 데이터를 기록하므로 rw 필요
+      - ~/.claude:/home/appuser/.claude
+
+      # bare clone 영구 저장 (컨테이너 재시작 시 re-clone 방지)
+      - git-repo:/tmp/oncall-bot-repo
+
+      # Atlassian MCP 서버 (entrypoint에서 자동 클론, 재시작 시 유지)
+      - atlassian-mcp-server:/opt/atlassian-mcp-server
+
+volumes:
+  git-repo:
+  atlassian-mcp-server:
